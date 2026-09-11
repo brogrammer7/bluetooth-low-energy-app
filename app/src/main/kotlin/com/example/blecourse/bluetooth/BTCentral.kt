@@ -18,13 +18,12 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattConnectionSettings
 import android.bluetooth.BluetoothGattDescriptor
-import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothProfile
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import androidx.compose.runtime.snapshots.SnapshotStateMap
 import com.example.blecourse.bluetooth.models.BTCommandQueue
+import com.example.blecourse.bluetooth.models.BTCharacteristicData
 import com.example.blecourse.extensions.displayName
 import com.example.blecourse.extensions.hasIndicateProperty
 import com.example.blecourse.extensions.hasNotifyProperty
@@ -55,7 +54,7 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
     var connectedPeripheralInfo by mutableStateOf<BTPeripheralInfo?>(null)
         private set
 
-    var connectedPeripheralData = mutableStateMapOf<BluetoothGattService, SnapshotStateMap<BluetoothGattCharacteristic, ByteArray>>()
+    var connectedPeripheralData by mutableStateOf(BTCharacteristicData())
         private set
 
     var isReady by mutableStateOf(false)
@@ -172,7 +171,9 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
                 }
 
                 override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray) {
-                    connectedPeripheralData[characteristic.service] = mutableStateMapOf(characteristic to value)
+                    BTDataDecoder.decodeDataForCharacteristic(value, characteristic.uuid)?.let { data ->
+                        connectedPeripheralData.update(data, characteristic)
+                    }
 
                     commandQueue.complete()
                 }
@@ -183,7 +184,9 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
                         return
                     }
 
-                    connectedPeripheralData[characteristic.service] = mutableStateMapOf(characteristic to value)
+                    BTDataDecoder.decodeDataForCharacteristic(value, characteristic.uuid)?.let { data ->
+                        connectedPeripheralData.update(data, characteristic)
+                    }
 
                     commandQueue.complete()
                 }

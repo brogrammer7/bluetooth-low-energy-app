@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,7 +50,7 @@ fun ReaderView(
     val peripheralInfo = central.connectedPeripheralInfo
     val peripheralName = peripheralInfo?.name ?: peripheralInfo?.address ?: "Unknown"
     val peripheralData = central.connectedPeripheralData
-    val services = peripheralData.keys.toList().sortedBy { it.uuid }
+    val services = peripheralData.serviceData.keys.toList().sortedBy { it.uuid }
 
     BackHandler(true) {
         onDisconnect()
@@ -77,7 +79,7 @@ fun ReaderView(
                     items(services) { service ->
                         ServiceSection(
                             service = service,
-                            serviceValues = peripheralData[service]!!,
+                            serviceValues = peripheralData.valuesForService(service),
                             onRead = onRead
                         )
                     }
@@ -104,7 +106,7 @@ fun ReaderView(
 @Composable
 fun ServiceSection(
     service: BluetoothGattService,
-    serviceValues: Map<BluetoothGattCharacteristic, ByteArray>,
+    serviceValues: Map<BluetoothGattCharacteristic, Map<String, String>>,
     onRead: (UUID) -> Unit
 ) {
     Column(
@@ -117,10 +119,10 @@ fun ServiceSection(
             fontSize = 17.sp
         )
 
-        serviceValues.forEach { (characteristic, value) ->
+        serviceValues.forEach { (characteristic, valueMap) ->
             CharacteristicSection(
                 characteristic,
-                value,
+                valueMap,
                 onRead
             )
         }
@@ -131,7 +133,7 @@ fun ServiceSection(
 @Composable
 fun CharacteristicSection(
     characteristic: BluetoothGattCharacteristic,
-    value: ByteArray,
+    valueMap: Map<String, String>,
     onRead: (UUID) -> Unit
 ) {
     Card {
@@ -163,11 +165,39 @@ fun CharacteristicSection(
                 }
             }
 
-            Text(
-                text = value.joinToString(" ") { "%02X".format(it) },
-                fontSize = 17.sp
-            )
+            if (valueMap.isNotEmpty()) {
+                valueMap.forEach { (label, value) ->
+                    CharacteristicValueRow(label, value)
+                }
+            } else {
+                Text(
+                    text = "No data available!",
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
         }
+    }
+}
+
+@Composable
+fun CharacteristicValueRow(
+    label: String,
+    value: String
+) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            fontSize = 17.sp,
+            color = MaterialTheme.colorScheme.secondary
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Text(
+            text = value,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 

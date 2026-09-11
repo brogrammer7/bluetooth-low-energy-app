@@ -32,6 +32,13 @@ object BLEProfile {
     val BODY_SENSOR_LOCATION_UUID             = "2a38".toUUID
 
     /*
+     * Custom service and characteristic UUIDs for the Random Number Generator example
+     */
+    val RANDOM_NUMBER_SERVICE_UUID            = "a1de94cb-4b7b-4a75-bfcd-321bc9a2b24b".toUUID
+    val RANDOM_NUMBER_CHARACTERISTIC_UUID     = "a1de94cb-4b7b-4a75-bfcd-321bc9a2b24c".toUUID
+    const val RANDOM_NUMBER_USER_DESCRIPTION  = "Random Number Generator"
+
+    /*
      * Standard descriptor UUIDs for Client Characteristic Configuration (CCCD) and Characteristic User Description (CUD)
      */
     val CCC_DESCRIPTOR_UUID                   = "2902".toUUID
@@ -55,6 +62,9 @@ object BLEProfile {
         HEART_RATE_SERVICE_UUID to listOf(
             HEART_RATE_MEASUREMENT_UUID,
             BODY_SENSOR_LOCATION_UUID
+        ),
+        RANDOM_NUMBER_SERVICE_UUID to listOf(
+            RANDOM_NUMBER_CHARACTERISTIC_UUID
         )
     )
 
