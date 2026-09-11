@@ -24,7 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.blecourse.bluetooth.BTBroadcaster
 import com.example.blecourse.bluetooth.BTCentral
+import com.example.blecourse.bluetooth.BTObserver
 import com.example.blecourse.bluetooth.BTPeripheral
 import com.example.blecourse.bluetooth.profiles.BLEProfile
 import com.example.blecourse.views.ui.theme.BLECourseTheme
@@ -36,12 +38,17 @@ fun MainView(context: Context = LocalContext.current) {
     val selectedTab = remember { mutableIntStateOf(0) }
 
     val central = remember { BTCentral(context) }
+    val observer = remember { BTObserver(context) }
+    val broadcaster = remember { BTBroadcaster(context) }
     val peripheral = remember { BTPeripheral(context) }
 
     central.initialize(BLEProfile.serviceConfigurationsByUuid)
 
     fun stopAllHandlers() {
         central.shutDown()
+        observer.shutDown()
+        broadcaster.shutDown()
+        peripheral.shutDown()
     }
 
     Scaffold(
@@ -97,6 +104,11 @@ fun MainView(context: Context = LocalContext.current) {
                         central.stopScanning()
                         central.connect(address)
                         navController.navigate("reader")
+                    },
+                    onObserve = { address ->
+                        central.stopScanning()
+                        observer.startObserving(address)
+                        navController.navigate("observer")
                     }
                 )
             }
@@ -116,12 +128,24 @@ fun MainView(context: Context = LocalContext.current) {
                     }
                 )
             }
+            composable("observer") {
+                ObserverView(
+                    modifier = Modifier.padding(innerPadding),
+                    observer = observer,
+                    onStopObserving = {
+                        observer.stopObserving()
+                        navController.navigateUp()
+                    }
+                )
+            }
             composable("peripheral") {
                 PeripheralView(
                     modifier = Modifier.padding(innerPadding),
                     peripheral = peripheral,
+                    broadcaster = broadcaster,
                     onUpdate = { data ->
                         peripheral.updateCharacteristicData(data, BLEProfile.RANDOM_NUMBER_CHARACTERISTIC_UUID)
+                        broadcaster.updateManufacturerSpecificData(data, BLEProfile.RANDOM_NUMBER_COMPANY_ID)
                     },
                     onWrite = { uuid, address ->
                         peripheral.writeCharacteristicData(uuid, address)

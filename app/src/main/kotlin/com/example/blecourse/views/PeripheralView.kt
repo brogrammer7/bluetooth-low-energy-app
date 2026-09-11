@@ -23,7 +23,6 @@ import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.blecourse.bluetooth.BTBroadcaster
 import com.example.blecourse.bluetooth.profiles.BLEProfile
 import com.example.blecourse.bluetooth.BTDataEncoder
 import com.example.blecourse.bluetooth.BTPeripheral
@@ -49,11 +49,17 @@ import kotlinx.coroutines.delay
 import java.util.UUID
 import kotlin.time.Duration.Companion.seconds
 
+/**
+ * A view that implements a Random Number Generator that supports two operation modes:
+ * - The Random Number service can be advertised and nearby centrals can connect to receive the actual number.
+ * - The random number can be broadcasted to nearby observers using the BTBroadcaster component.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PeripheralView(
     modifier: Modifier = Modifier,
     peripheral: BTPeripheral = BTPeripheral(LocalContext.current),
+    broadcaster: BTBroadcaster = BTBroadcaster(LocalContext.current),
     onUpdate: (ByteArray) -> Unit = {},
     onWrite: (UUID, String?) -> Unit = {_,_ -> }
 ) {
@@ -63,7 +69,7 @@ fun PeripheralView(
     val connectedCentrals = peripheral.connectedCentrals.values.toList()
 
     LaunchedEffect(Unit) {
-        peripheral.onDataReceived = { device, characteristic, value ->
+        peripheral.onDataReceived = { _, _, value ->
             val command = value.toString(Charsets.UTF_8)
             if (command == "pause") {
                 autoWrite = false
@@ -103,6 +109,15 @@ fun PeripheralView(
                         ) {
                             Text("Stop Advertising")
                         }
+                    } else if (broadcaster.isBroadcasting) {
+                       Button(
+                           colors = ButtonDefaults.buttonColors(containerColor = DarkerRed),
+                           onClick = {
+                               broadcaster.stopBroadcasting()
+                           }
+                       ) {
+                           Text("Stop Broadcasting")
+                       }
                     } else {
                         Button(
                             enabled = peripheral.isReady,
@@ -111,6 +126,17 @@ fun PeripheralView(
                             }
                         ) {
                             Text("Advertise")
+                        }
+
+                        Spacer(modifier = Modifier.width(5.dp))
+
+                        Button(
+                            enabled = broadcaster.isReady,
+                            onClick = {
+                                broadcaster.startBroadcasting()
+                            }
+                        ) {
+                            Text("Broadcast")
                         }
                     }
                 }

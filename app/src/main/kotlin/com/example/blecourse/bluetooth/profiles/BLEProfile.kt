@@ -42,6 +42,15 @@ object BLEProfile {
     const val RANDOM_NUMBER_USER_DESCRIPTION  = "Random Number Generator"
 
     /*
+     * Manufacturer specification information we want to observe, defined by a Pair that contains an array with the
+     * particular manufacturer IDs and the expected data length
+     */
+    val THERMO_BEACON_COMPANY_IDS             = listOf(0x0010, 0x0011, 0x0015, 0x0018, 0x001b)
+    const val THERMO_BEACON_DATA_LENGTH       = 20
+    const val RANDOM_NUMBER_COMPANY_ID        = 0xff00
+    const val RANDOM_NUMBER_DATA_LENGTH       = 11
+
+    /*
      * Standard descriptor UUIDs for Client Characteristic Configuration (CCCD) and Characteristic User Description (CUD)
      */
     val CCC_DESCRIPTOR_UUID                   = "2902".toUUID

@@ -33,6 +33,7 @@ import com.example.blecourse.bluetooth.BTCentral
 import com.example.blecourse.bluetooth.models.BTPeripheralInfo
 import com.example.blecourse.views.ui.theme.BLECourseTheme
 import com.example.blecourse.views.ui.theme.DarkerGreen
+import com.example.blecourse.views.ui.theme.DarkerOrange
 import com.example.blecourse.views.ui.theme.DarkerRed
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,7 +41,8 @@ import com.example.blecourse.views.ui.theme.DarkerRed
 fun CentralView(
     modifier: Modifier = Modifier,
     central: BTCentral = BTCentral(LocalContext.current),
-    onConnect: (String) -> Unit = {}
+    onConnect: (String) -> Unit = {},
+    onObserve: (String) -> Unit = {}
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -82,7 +84,8 @@ fun CentralView(
             ) {
                 PeripheralList(
                     peripherals = peripherals,
-                    onConnect = onConnect
+                    onConnect = onConnect,
+                    onObserve = onObserve
                 )
             }
         } else {
@@ -99,13 +102,15 @@ fun CentralView(
 @Composable
 fun PeripheralList(
     peripherals: List<BTPeripheralInfo>,
-    onConnect: (String) -> Unit = {}
+    onConnect: (String) -> Unit = {},
+    onObserve: (String) -> Unit = {}
 ) {
     LazyColumn(Modifier.fillMaxWidth()) {
         items(peripherals) { peripheralInfo ->
             PeripheralListRow(
                 peripheralInfo = peripheralInfo,
-                onConnect = onConnect
+                onConnect = onConnect,
+                onObserve = onObserve
             )
 
             HorizontalDivider()
@@ -116,7 +121,8 @@ fun PeripheralList(
 @Composable
 fun PeripheralListRow(
     peripheralInfo: BTPeripheralInfo,
-    onConnect: (String) -> Unit = {}
+    onConnect: (String) -> Unit = {},
+    onObserve: (String) -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -148,7 +154,16 @@ fun PeripheralListRow(
             )
         }
 
-        if (peripheralInfo.isConnectable) {
+        if (peripheralInfo.isObservable) {
+            Button(
+                colors = ButtonDefaults.buttonColors(containerColor = DarkerOrange),
+                onClick = {
+                    onObserve(peripheralInfo.address)
+                }
+            ) {
+                Text("Observe")
+            }
+        } else if (peripheralInfo.isConnectable) {
             Button(
                 colors = ButtonDefaults.buttonColors(containerColor = DarkerGreen),
                 onClick = {

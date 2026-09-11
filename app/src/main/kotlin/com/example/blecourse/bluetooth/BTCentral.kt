@@ -147,6 +147,8 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
                         return
                     }
 
+                    val isObservable = BTDataDecoder.isValidManufacturerData(result.scanRecord?.manufacturerSpecificData)
+
                     val device = result.device
                     val deviceKey = device.address.uppercase()
 
@@ -156,6 +158,7 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
 
                         val peripheralInfo = BTPeripheralInfo(device)
                         peripheralInfo.isConnectable = result.isConnectable
+                        peripheralInfo.isObservable = isObservable
 
                         discoveredPeripherals[deviceKey] = peripheralInfo
                     }

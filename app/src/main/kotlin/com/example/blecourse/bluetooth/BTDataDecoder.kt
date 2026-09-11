@@ -9,6 +9,10 @@ import java.time.format.FormatStyle
 import java.util.UUID
 import kotlin.collections.isEmpty
 import kotlin.math.roundToInt
+import android.util.SparseArray
+import androidx.core.util.isEmpty
+import kotlin.collections.isEmpty
+import kotlin.math.roundToInt
 
 /**
  * Data decoder for decoding manufacturer specific data and characteristics values to human-readable formats.
@@ -16,6 +20,82 @@ import kotlin.math.roundToInt
 object BTDataDecoder {
     private val dateTimeFormatter: DateTimeFormatter? = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
 
+    /**
+     * Check if the manufacturer data is supported.
+     */
+    fun isValidManufacturerData(data: SparseArray<ByteArray>?) : Boolean {
+        val bytes = this.extractManufacturerSpecificData(data) ?: return false
+
+        val companyId = decodeUShortAt(bytes, 0).toInt()
+
+        // Check if this is a ThermoBeacon
+        if (BLEProfile.THERMO_BEACON_COMPANY_IDS.contains(companyId)) {
+            return bytes.size == BLEProfile.THERMO_BEACON_DATA_LENGTH
+        }
+
+        // Check if this is our Random Number Generator
+        if (companyId == BLEProfile.RANDOM_NUMBER_COMPANY_ID) {
+            return bytes.size == BLEProfile.RANDOM_NUMBER_DATA_LENGTH
+        }
+
+        return false
+    }
+
+    /**
+     * Converts the bytes of the manufacturer specific data to a map with labels and values
+     * In this example, we only support the ThermoBeacon and the Random Number Generator we'll build in this course.
+     */
+    fun decodeManufacturerData(data: SparseArray<ByteArray>?) : Map<String, String>? {
+        val bytes = this.extractManufacturerSpecificData(data) ?: return null
+
+        val companyId = decodeUShortAt(bytes, 0).toInt()
+
+        if (BLEProfile.THERMO_BEACON_COMPANY_IDS.contains(companyId) && bytes.size == BLEProfile.THERMO_BEACON_DATA_LENGTH) {
+            /*
+             * ThermoBeacon (Different Brands)
+             * See https://github.com/theengs/decoder/blob/development/src/devices/ThermoBeacon_json.h
+             *
+             * Total number of bytes: 20
+             * - Company ID (Bytes 0..1)
+             * - MAC address (Bytes 2..9)
+             * - Voltage (Bytes 10..11)
+             * - Temperature in Celsius (Bytes 12..13)
+             * - Humidity in Percent (Bytes 14..15)
+             * - Uptime in seconds (Bytes 16..19)
+             */
+            val voltage = decodeUShortAt(bytes, 10).toDouble()  / 1000.0
+            val tempCelsius = decodeUShortAt(bytes, 12).toDouble() / 16.0
+            val humidityPercent = decodeUShortAt(bytes, 14).toDouble() / 16.0
+
+            return mapOf(
+                "Voltage" to "%.1f V".format(voltage),
+                "Temperature" to "%.1f °C".format(tempCelsius),
+                "Humidity" to "%.1f%%".format(humidityPercent)
+            )
+        }
+
+        if (companyId == BLEProfile.RANDOM_NUMBER_COMPANY_ID && bytes.size == BLEProfile.RANDOM_NUMBER_DATA_LENGTH) {
+            /*
+             * Custom data providing a random number and a timestamp
+             * - Company ID (Bytes 0..1)
+             * - Random number  (Bytes 2..3)
+             * - TimeStamp (Bytes 4..11)
+             */
+            val randomNumber = decodeUShortAt(bytes, 2).toInt()
+            val timestamp = decodeTimestampAt(bytes, 4)
+
+            return mapOf(
+                "Random Number" to "$randomNumber",
+                "Timestamp" to (timestamp?.format(dateTimeFormatter) ?: "ERROR!")
+            )
+        }
+
+        return null
+    }
+
+    /**
+     * Converts the bytes of the characteristic value to a map with labels and values
+     */
     fun decodeDataForCharacteristic(bytes: ByteArray, uuid: UUID): Map<String, String>? {
         if (bytes.isEmpty()) {
             return null
@@ -207,5 +287,20 @@ object BTDataDecoder {
             0,
             ZoneId.systemDefault()
         )
+    }
+
+    /**
+     * Extracts the relevant manufacturer data from the given sparse array and converts it to a
+     * regular byte array.
+     */
+    private fun extractManufacturerSpecificData(data: SparseArray<ByteArray>?): ByteArray? {
+        val data = data ?: return null
+
+        if (data.isEmpty() || data.valueAt(0).isEmpty()) {
+            return null
+        }
+
+        val manufacturerId = data.keyAt(0).toUShort()
+        return byteArrayOf(manufacturerId.toByte(), (manufacturerId.toInt() shr 8).toByte()) + data.valueAt(0)
     }
 }
