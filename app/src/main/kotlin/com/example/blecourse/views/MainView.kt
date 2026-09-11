@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CellTower
 import androidx.compose.material.icons.outlined.FileCopy
 import androidx.compose.material.icons.outlined.Podcasts
 import androidx.compose.material.icons.outlined.Sensors
@@ -31,9 +32,16 @@ import com.example.blecourse.bluetooth.BTFileReceiver
 import com.example.blecourse.bluetooth.BTFileSender
 import com.example.blecourse.bluetooth.BTObserver
 import com.example.blecourse.bluetooth.BTPeripheral
+import com.example.blecourse.bluetooth.beacon.BeaconAdvertiser
+import com.example.blecourse.bluetooth.beacon.BeaconMonitor
 import com.example.blecourse.bluetooth.profiles.BLEProfile
+import com.example.blecourse.bluetooth.profiles.BeaconProfile
 import com.example.blecourse.views.ui.theme.BLECourseTheme
 
+/**
+ * The main view of the app, which contains the navigation logic and the bottom navigation bar. It also initializes the
+ * Bluetooth components and passes them to the corresponding views.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainView(context: Context = LocalContext.current) {
@@ -46,9 +54,14 @@ fun MainView(context: Context = LocalContext.current) {
     val broadcaster = remember { BTBroadcaster(context) }
     val fileSender = remember { BTFileSender(context) }
     val fileReceiver = remember { BTFileReceiver(context) }
+    val beaconMonitor = remember { BeaconMonitor(context) }
+    val beaconAdvertiser = remember { BeaconAdvertiser(context) }
 
     central.initialize(BLEProfile.serviceConfigurationsByUuid)
 
+    /*
+     * Function to stop all Bluetooth handlers to ensure clean state when switching tabs
+     */
     fun stopAllHandlers() {
         central.shutDown()
         observer.shutDown()
@@ -56,6 +69,8 @@ fun MainView(context: Context = LocalContext.current) {
         peripheral.shutDown()
         fileSender.shutDown()
         fileReceiver.shutDown()
+        beaconMonitor.shutDown()
+        beaconAdvertiser.shutDown()
     }
 
     Scaffold(
@@ -112,6 +127,24 @@ fun MainView(context: Context = LocalContext.current) {
                         },
                         label = {
                             Text("Files")
+                        }
+                    )
+
+                    NavigationBarItem(
+                        selected = selectedTab.intValue == 4,
+                        onClick = {
+                            stopAllHandlers()
+                            beaconMonitor.initialize(listOf(BeaconProfile.CP27_BEACON_UUID, BeaconProfile.DEMO_BEACON_UUID))
+                            beaconAdvertiser.initialize(BeaconProfile.demoBeaconIdentity)
+
+                            selectedTab.intValue = 4
+                            navController.navigate("beacon")
+                        },
+                        icon = {
+                            Icon(imageVector = Icons.Outlined.CellTower, contentDescription = "")
+                        },
+                        label = {
+                            Text("Beacon")
                         }
                     )
                 }
@@ -180,6 +213,13 @@ fun MainView(context: Context = LocalContext.current) {
                     modifier = Modifier.padding(innerPadding),
                     sender = fileSender,
                     receiver = fileReceiver
+                )
+            }
+            composable("beacon") {
+                BeaconView(
+                    modifier = Modifier.padding(innerPadding),
+                    monitor = beaconMonitor,
+                    advertiser = beaconAdvertiser
                 )
             }
         }
