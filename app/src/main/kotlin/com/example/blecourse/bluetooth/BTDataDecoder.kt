@@ -4,11 +4,18 @@ import com.example.blecourse.bluetooth.profiles.BLEProfile
 import java.nio.charset.StandardCharsets
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.UUID
 import kotlin.collections.isEmpty
 import kotlin.math.roundToInt
 
+/**
+ * Data decoder for decoding manufacturer specific data and characteristics values to human-readable formats.
+ */
 object BTDataDecoder {
+    private val dateTimeFormatter: DateTimeFormatter? = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+
     fun decodeDataForCharacteristic(bytes: ByteArray, uuid: UUID): Map<String, String>? {
         if (bytes.isEmpty()) {
             return null
@@ -56,6 +63,10 @@ object BTDataDecoder {
 
             BLEProfile.HEART_RATE_MEASUREMENT_UUID -> {
                 return decodeHeartRateMeasurement(bytes)
+            }
+
+            BLEProfile.RANDOM_NUMBER_CHARACTERISTIC_UUID -> {
+                return decodeRandomNumber(bytes)
             }
 
             else -> {
@@ -134,6 +145,29 @@ object BTDataDecoder {
         }
 
         return resultMap
+    }
+
+    /*
+     * Decodes the random number and time stamp (Custom)
+     * - Random number (Bytes 0..1)
+     * - Time stamp (Bytes 2..9)
+     */
+    private fun decodeRandomNumber(bytes: ByteArray): Map<String, String>? {
+        // Custom characteristic providing a random number and a timestamp
+        if (bytes.size < 9) {
+            return null
+        }
+
+        // Random number (Bytes 0..1)
+        val randomNumber = decodeUShortAt(bytes, 0)
+
+        // Timestamp (Bytes 2..8)
+        val timestamp = decodeTimestampAt(bytes, 2)
+
+        return mapOf(
+            "Random Number" to "$randomNumber",
+            "Timestamp" to (timestamp?.format(dateTimeFormatter) ?: "ERROR!")
+        )
     }
 
     /*

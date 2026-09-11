@@ -25,9 +25,12 @@ import android.os.Looper
 import com.example.blecourse.bluetooth.models.BTCommandQueue
 import com.example.blecourse.bluetooth.models.BTCharacteristicData
 import com.example.blecourse.extensions.displayName
+import com.example.blecourse.extensions.findCharacteristicByUuid
 import com.example.blecourse.extensions.hasIndicateProperty
 import com.example.blecourse.extensions.hasNotifyProperty
 import com.example.blecourse.extensions.hasReadProperty
+import com.example.blecourse.extensions.hasWriteProperty
+import com.example.blecourse.extensions.hasWriteWithoutResponseProperty
 import com.example.blecourse.extensions.isCUDDescriptor
 import com.example.blecourse.extensions.writeCCCDescriptor
 import java.nio.charset.StandardCharsets
@@ -47,6 +50,8 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
 
     private val commandHandler = Handler(Looper.getMainLooper())
     private val commandQueue = BTCommandQueue()
+
+    private var mtuSize = 23
 
     var discoveredPeripherals = mutableStateMapOf<String, BTPeripheralInfo>()
         private set
@@ -124,6 +129,9 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
 
                             connectedGatt = null
                             connectedPeripheralInfo = null
+
+                            commandQueue.clear()
+
                             isConnected = false
                         }
                     }
@@ -191,6 +199,17 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
                     commandQueue.complete()
                 }
 
+                override fun onCharacteristicWrite(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?, status: Int) {
+                    if (status != BluetoothGatt.GATT_SUCCESS) {
+                        Log.e(TAG, "onCharacteristicWrite -> GATT failure: $status")
+
+                        commandQueue.complete()
+                        return
+                    }
+
+                    commandQueue.complete()
+                }
+
                 override fun onDescriptorRead(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int, value: ByteArray) {
                     if (status != BluetoothGatt.GATT_SUCCESS) {
                         commandQueue.complete()
@@ -205,6 +224,27 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
                     descriptor.characteristic.displayName = String(value, StandardCharsets.UTF_8)
 
                     commandQueue.complete()
+                }
+
+                override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
+                    if (status != BluetoothGatt.GATT_SUCCESS) {
+                        Log.e(TAG, "onDescriptorWrite -> GATT failure: $status")
+
+                        commandQueue.complete()
+                        return
+                    }
+
+                    commandQueue.complete()
+                }
+
+                override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
+                    if (status != BluetoothGatt.GATT_SUCCESS) {
+                        Log.e(TAG, "onMtuChanged -> Error $status")
+                        return
+                    }
+
+                    Log.i(TAG, "onMtuChanged -> MTU changed to $mtu")
+                    mtuSize = mtu
                 }
             }
         }
@@ -302,6 +342,39 @@ class BTCentral(context: Context) : BTBaseHandler(context) {
         }
 
         gatt.disconnect()
+    }
+
+    @SuppressLint("MissingPermission")
+    fun writeCharacteristic(data: ByteArray, uuid: UUID, withoutResponse: Boolean = false) {
+        val gatt = connectedGatt ?: run {
+            Log.e(TAG, "writeCharacteristic -> Not connected")
+            return
+        }
+
+        val characteristic = gatt.services.findCharacteristicByUuid(uuid) ?: run {
+            Log.e(TAG, "writeCharacteristic -> Characteristic $uuid is not available")
+            return
+        }
+
+        val writeType = if (withoutResponse && characteristic.hasWriteWithoutResponseProperty) {
+            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+        } else if (characteristic.hasWriteProperty) {
+            BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        } else {
+            Log.e(TAG, "writeCharacteristic -> Characteristic does not support writing")
+            return
+        }
+
+        val chunkedData = if((data.size > mtuSize - 3))
+            data.toList().chunked(mtuSize - 3).map { it.toByteArray() }
+        else
+            listOf(data)
+
+        chunkedData.forEach { chunk ->
+            commandQueue.enqueue {
+                gatt.writeCharacteristic(characteristic, chunk, writeType)
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")

@@ -146,8 +146,10 @@ fun BluetoothGattCharacteristic.writeCCCDescriptor(gatt: BluetoothGatt, enable: 
         return BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
     }
 
+    val cccValue = if (enable) this.cccValue else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+
     return this.cccDescriptor?.let { descriptor ->
-        gatt.writeDescriptor(descriptor, this.cccValue)
+        gatt.writeDescriptor(descriptor, cccValue)
     } ?: BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED
 }
 

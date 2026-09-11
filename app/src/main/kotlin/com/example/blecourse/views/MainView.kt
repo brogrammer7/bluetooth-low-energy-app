@@ -80,6 +80,9 @@ fun MainView(context: Context = LocalContext.current) {
                     onRead = { uuid ->
                         central.readCharacteristic(uuid)
                     },
+                    onWrite = { data, uuid, responseNeeded ->
+                        central.writeCharacteristic(data, uuid, responseNeeded)
+                    },
                     onDisconnect = {
                         central.disconnect()
                         navController.navigateUp()

@@ -6,17 +6,29 @@ import android.util.Log
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
- * Implements a command queue for Bluetooth operations to ensure they are executed sequentially to avoid conflicts.
- * Bluetooth commands are enqueued as Runnable objects and will be executed one at a time. The next command in the queue
- * is automatically executed as soon as a command is completed.
+ * Implements a command queue for Bluetooth operations to ensure they are executed sequentially to
+ * avoid conflicts. Bluetooth commands are enqueued as Runnable objects and will be executed one at
+ * a time. The next command in the queue is automatically executed as soon as a command is completed.
  *
- * This class uses a Handler to post commands to the main thread, which is necessary for most Bluetooth operations that
- * interact with the Android Bluetooth API.
+ * This class uses a Handler to post commands to the main thread, which is necessary for most
+ * Bluetooth operations that interact with the Android Bluetooth API.
+ *
+ * It also uses a timeout handler to prevent deadlocks if a callback is missing.
  */
 class BTCommandQueue {
     private val handler = Handler(Looper.getMainLooper())
     private val queue = ConcurrentLinkedQueue<Runnable>()
     private var current: Runnable? = null
+
+    // The command timeout in milliseconds
+    private val commandTimeout = 15000L
+
+    // Timeout handler that completes the active runnable after the given timeout.
+    private val timeoutRunnable = Runnable {
+        val running = this.current ?: return@Runnable
+        Log.w(BTCommandQueue::class.simpleName, "timeout: ${running.hashCode()}")
+        this.complete()
+    }
 
     /**
      * Enqueues a Bluetooth command to be executed.
@@ -33,6 +45,7 @@ class BTCommandQueue {
      * Marks the current command as completed and triggers the execution of the next command in the queue, if any.
      */
     fun complete() {
+        this.handler.removeCallbacks(this.timeoutRunnable)
         this.current = null
 
         if (this.queue.isNotEmpty()) {
@@ -56,6 +69,9 @@ class BTCommandQueue {
     private fun execute(command: Runnable) {
         this.current = command
 
+        this.handler.removeCallbacks(this.timeoutRunnable)
+        this.handler.postDelayed(this.timeoutRunnable, this.commandTimeout)
+
         try {
             this.handler.post(command)
         } catch (ex: Exception) {
@@ -68,7 +84,9 @@ class BTCommandQueue {
      * Clears the command queue and resets the current command.
      */
     fun clear() {
+        this.handler.removeCallbacks(this.timeoutRunnable)
         this.queue.clear()
+
         this.current = null
     }
 }
