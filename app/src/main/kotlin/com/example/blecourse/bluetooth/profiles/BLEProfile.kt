@@ -51,6 +51,11 @@ object BLEProfile {
     const val RANDOM_NUMBER_DATA_LENGTH       = 11
 
     /*
+     * Custom UUID for L2CAP file transfer service
+     */
+    val L2CAP_SERVICE_UUID                    = "a1de94cb-4b7b-4a75-bfcd-321bc9a2b26b".toUUID
+
+    /*
      * Standard descriptor UUIDs for Client Characteristic Configuration (CCCD) and Characteristic User Description (CUD)
      */
     val CCC_DESCRIPTOR_UUID                   = "2902".toUUID

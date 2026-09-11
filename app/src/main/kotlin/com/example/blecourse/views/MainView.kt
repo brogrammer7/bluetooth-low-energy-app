@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FileCopy
 import androidx.compose.material.icons.outlined.Podcasts
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material3.BottomAppBar
@@ -26,6 +27,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.blecourse.bluetooth.BTBroadcaster
 import com.example.blecourse.bluetooth.BTCentral
+import com.example.blecourse.bluetooth.BTFileReceiver
+import com.example.blecourse.bluetooth.BTFileSender
 import com.example.blecourse.bluetooth.BTObserver
 import com.example.blecourse.bluetooth.BTPeripheral
 import com.example.blecourse.bluetooth.profiles.BLEProfile
@@ -39,8 +42,10 @@ fun MainView(context: Context = LocalContext.current) {
 
     val central = remember { BTCentral(context) }
     val observer = remember { BTObserver(context) }
-    val broadcaster = remember { BTBroadcaster(context) }
     val peripheral = remember { BTPeripheral(context) }
+    val broadcaster = remember { BTBroadcaster(context) }
+    val fileSender = remember { BTFileSender(context) }
+    val fileReceiver = remember { BTFileReceiver(context) }
 
     central.initialize(BLEProfile.serviceConfigurationsByUuid)
 
@@ -49,6 +54,8 @@ fun MainView(context: Context = LocalContext.current) {
         observer.shutDown()
         broadcaster.shutDown()
         peripheral.shutDown()
+        fileSender.shutDown()
+        fileReceiver.shutDown()
     }
 
     Scaffold(
@@ -89,6 +96,22 @@ fun MainView(context: Context = LocalContext.current) {
                         },
                         label = {
                             Text("Peripheral")
+                        }
+                    )
+
+                    NavigationBarItem(
+                        selected = selectedTab.intValue == 3,
+                        onClick = {
+                            stopAllHandlers()
+
+                            selectedTab.intValue = 3
+                            navController.navigate("files")
+                        },
+                        icon = {
+                            Icon(imageVector = Icons.Outlined.FileCopy, contentDescription = "")
+                        },
+                        label = {
+                            Text("Files")
                         }
                     )
                 }
@@ -150,6 +173,13 @@ fun MainView(context: Context = LocalContext.current) {
                     onWrite = { uuid, address ->
                         peripheral.writeCharacteristicData(uuid, address)
                     }
+                )
+            }
+            composable("files") {
+                FileTransferView(
+                    modifier = Modifier.padding(innerPadding),
+                    sender = fileSender,
+                    receiver = fileReceiver
                 )
             }
         }
