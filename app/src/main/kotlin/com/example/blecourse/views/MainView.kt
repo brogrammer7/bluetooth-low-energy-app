@@ -1,42 +1,86 @@
 package com.example.blecourse.views
 
 import android.content.Context
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CellTower
+import androidx.compose.material.icons.outlined.FileCopy
+import androidx.compose.material.icons.outlined.Podcasts
+import androidx.compose.material.icons.outlined.Sensors
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.blecourse.bluetooth.BTCentral
+import com.example.blecourse.bluetooth.profiles.BLEProfile
 import com.example.blecourse.views.ui.theme.BLECourseTheme
 
-/**
- * The main view of the app, which contains the navigation logic and the bottom navigation bar. It also initializes the
- * Bluetooth components and passes them to the corresponding views.
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainView(context: Context = LocalContext.current) {
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        Greeting(
-            name = "Android",
-            modifier = Modifier.padding(innerPadding)
-        )
+    val navController = rememberNavController()
+    val selectedTab = remember { mutableIntStateOf(0) }
+
+    val central = remember { BTCentral(context) }
+
+    Scaffold(
+        Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0.dp),
+        bottomBar = {
+            BottomAppBar(
+                modifier = Modifier.fillMaxWidth(),
+                actions = {
+                    NavigationBarItem(
+                        selected = selectedTab.intValue == 0,
+                        onClick = {
+                            selectedTab.intValue = 0
+                            navController.navigate("central")
+                        },
+                        icon = {
+                            Icon(imageVector = Icons.Outlined.Sensors, contentDescription = "")
+                        },
+                        label = {
+                            Text("Central")
+                        }
+                    )
+                }
+            )
+        }
+    ) { innerPadding ->
+        NavHost(navController, startDestination = "central") {
+            composable("central") {
+                CentralView(
+                    modifier = Modifier.padding(innerPadding),
+                    central = central,
+                    onConnect = { address ->
+                        // Not implemented yet
+                    }
+                )
+            }
+        }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun MainPreview() {
     BLECourseTheme {
-        Greeting("Android")
+        MainView()
     }
 }
