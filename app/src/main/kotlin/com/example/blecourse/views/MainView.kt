@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Podcasts
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.blecourse.bluetooth.BTCentral
+import com.example.blecourse.bluetooth.BTPeripheral
 import com.example.blecourse.bluetooth.profiles.BLEProfile
 import com.example.blecourse.views.ui.theme.BLECourseTheme
 
@@ -34,8 +36,13 @@ fun MainView(context: Context = LocalContext.current) {
     val selectedTab = remember { mutableIntStateOf(0) }
 
     val central = remember { BTCentral(context) }
+    val peripheral = remember { BTPeripheral(context) }
 
     central.initialize(BLEProfile.serviceConfigurationsByUuid)
+
+    fun stopAllHandlers() {
+        central.shutDown()
+    }
 
     Scaffold(
         Modifier.fillMaxSize(),
@@ -47,6 +54,9 @@ fun MainView(context: Context = LocalContext.current) {
                     NavigationBarItem(
                         selected = selectedTab.intValue == 0,
                         onClick = {
+                            stopAllHandlers()
+                            central.initialize(BLEProfile.serviceConfigurationsByUuid)
+
                             selectedTab.intValue = 0
                             navController.navigate("central")
                         },
@@ -55,6 +65,23 @@ fun MainView(context: Context = LocalContext.current) {
                         },
                         label = {
                             Text("Central")
+                        }
+                    )
+
+                    NavigationBarItem(
+                        selected = selectedTab.intValue == 1,
+                        onClick = {
+                            stopAllHandlers()
+                            peripheral.initialize(listOf(BLEProfile.randomNumberService))
+
+                            selectedTab.intValue = 1
+                            navController.navigate("peripheral")
+                        },
+                        icon = {
+                            Icon(imageVector = Icons.Outlined.Podcasts, contentDescription = "")
+                        },
+                        label = {
+                            Text("Peripheral")
                         }
                     )
                 }
@@ -86,6 +113,18 @@ fun MainView(context: Context = LocalContext.current) {
                     onDisconnect = {
                         central.disconnect()
                         navController.navigateUp()
+                    }
+                )
+            }
+            composable("peripheral") {
+                PeripheralView(
+                    modifier = Modifier.padding(innerPadding),
+                    peripheral = peripheral,
+                    onUpdate = { data ->
+                        peripheral.updateCharacteristicData(data, BLEProfile.RANDOM_NUMBER_CHARACTERISTIC_UUID)
+                    },
+                    onWrite = { uuid, address ->
+                        peripheral.writeCharacteristicData(uuid, address)
                     }
                 )
             }

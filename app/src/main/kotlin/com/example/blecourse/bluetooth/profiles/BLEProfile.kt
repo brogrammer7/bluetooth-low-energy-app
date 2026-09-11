@@ -1,5 +1,8 @@
 package com.example.blecourse.bluetooth.profiles
 
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothGattService
 import java.util.UUID
 
 /**
@@ -68,6 +71,9 @@ object BLEProfile {
         )
     )
 
+    /*
+     * Returns a human-readable name for a standard service used in this app
+     */
     fun standardServiceDisplayNameFor(uuid: UUID) : String? = when (uuid) {
         BATTERY_SERVICE_UUID -> "Battery Service"
         DEVICE_INFO_SERVICE_UUID -> "Device Information Service"
@@ -75,6 +81,9 @@ object BLEProfile {
         else -> null
     }
 
+    /*
+     * Returns a human-readable name for a standard characteristic used in this app
+     */
     fun standardCharacteristicDisplayNameFor(uuid: UUID) : String? = when (uuid) {
         BATTERY_SERVICE_UUID -> "Battery Service"
         BATTERY_LEVEL_UUID -> "Battery Level"
@@ -87,6 +96,42 @@ object BLEProfile {
         HEART_RATE_MEASUREMENT_UUID -> "Heart Rate Measurement"
         BODY_SENSOR_LOCATION_UUID -> "Body Sensor Location"
         else -> null
+    }
+
+    /*
+     * BluetoothGattService definition which is offered by the random number generator peripheral.
+     */
+    val randomNumberService: BluetoothGattService get() {
+        // Add a Characteristic User Description (CUD) to provide a human-readable description of the characteristic
+        val cudDescriptor = BluetoothGattDescriptor(
+            CUD_DESCRIPTOR_UUID,
+            BluetoothGattDescriptor.PERMISSION_READ
+        )
+
+        // Add a Client Characteristic Configuration Descriptor (CCCD) - REQUIRED for characteristics with NOTIFY property
+        val cccDescriptor = BluetoothGattDescriptor(
+            CCC_DESCRIPTOR_UUID,
+            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+        )
+
+        /*
+         * This characteristic exposes the current random number as a read-only value. Centrals can fetch the
+         * latest value on demand with PROPERTY_READ and subscribe with PROPERTY_NOTIFY to receive future updates.
+         */
+        val characteristic = BluetoothGattCharacteristic(
+            RANDOM_NUMBER_CHARACTERISTIC_UUID,
+            BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            BluetoothGattCharacteristic.PERMISSION_READ or BluetoothGattCharacteristic.PERMISSION_WRITE
+        )
+
+        characteristic.addDescriptor(cudDescriptor)
+        characteristic.addDescriptor(cccDescriptor)
+
+        // Create the service with the characteristic
+        val service = BluetoothGattService(RANDOM_NUMBER_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+        service.addCharacteristic(characteristic)
+
+        return service
     }
 }
 
