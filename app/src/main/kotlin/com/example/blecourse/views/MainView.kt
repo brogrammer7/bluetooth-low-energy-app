@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CellTower
-import androidx.compose.material.icons.outlined.FileCopy
-import androidx.compose.material.icons.outlined.Podcasts
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,6 +34,8 @@ fun MainView(context: Context = LocalContext.current) {
     val selectedTab = remember { mutableIntStateOf(0) }
 
     val central = remember { BTCentral(context) }
+
+    central.initialize(BLEProfile.serviceConfigurationsByUuid)
 
     Scaffold(
         Modifier.fillMaxSize(),
@@ -68,7 +67,22 @@ fun MainView(context: Context = LocalContext.current) {
                     modifier = Modifier.padding(innerPadding),
                     central = central,
                     onConnect = { address ->
-                        // Not implemented yet
+                        central.stopScanning()
+                        central.connect(address)
+                        navController.navigate("reader")
+                    }
+                )
+            }
+            composable("reader") {
+                ReaderView(
+                    modifier = Modifier.padding(innerPadding),
+                    central = central,
+                    onRead = { uuid ->
+                        central.readCharacteristic(uuid)
+                    },
+                    onDisconnect = {
+                        central.disconnect()
+                        navController.navigateUp()
                     }
                 )
             }
